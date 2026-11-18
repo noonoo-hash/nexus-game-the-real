@@ -1,43 +1,63 @@
 # NEXUS — configuration des sauvegardes cloud
 
-Le jeu utilise Supabase. Une seule instance Supabase est partagée par tous les joueurs ; ils n'ont pas à créer leur propre projet.
+Le jeu utilise Supabase. Le projet est déjà renseigné dans `cloud-config.js` ; les joueurs n'ont pas à créer leur propre projet ni à saisir de clé.
 
-## 1. Créer le projet Supabase
-1. Créer un projet sur https://supabase.com.
-2. Dans Project Settings > API, copier le Project URL et la clé publique (publishable key ou anon key).
-3. Ne jamais utiliser la clé `service_role` dans le navigateur.
+## 1. Vérifier le projet existant
+Ouvrir le projet NEXUS dans Supabase :
+https://supabase.com/dashboard/project/yzmgbltymdyubxnbkcse
 
-## 2. Créer la table et sécuriser les données
-Dans Supabase > SQL Editor, exécuter tout le contenu de `SUPABASE_SETUP.sql`.
-Les règles RLS limitent chaque joueur à sa propre sauvegarde.
+La clé enregistrée dans le dépôt est une clé publique *publishable*. C'est normal qu'elle soit visible dans le navigateur. Ne jamais mettre une clé `sb_secret_` ou `service_role` dans le code du jeu.
+
+## 2. Créer / sécuriser la table de sauvegardes
+Dans Supabase > SQL Editor :
+1. Ouvrir le fichier `SUPABASE_SETUP.sql` du dépôt GitHub.
+2. Copier tout son contenu dans une nouvelle requête SQL.
+3. Exécuter la requête.
+
+Le script active RLS, retire les droits du rôle public et du rôle `anon`, puis accorde uniquement les opérations nécessaires au rôle `authenticated`. Les policies limitent chaque joueur à la ligne dont le `user_id` correspond à son propre identifiant.
 
 ## 3. Activer les méthodes de connexion
-- Authentication > Sign In / Providers : activer Email.
-- Authentication > Sign In / Providers : activer Anonymous Sign-Ins pour le mode invité.
-- Pour Google : activer Google et configurer les identifiants OAuth côté Google Cloud. Ajouter l'URL de redirection fournie par Supabase dans les URI de redirection autorisées Google et dans Supabase > Authentication > URL Configuration. Ajouter aussi `https://noonoo-hash.github.io` aux URL autorisées.
+Dans Authentication > Sign In / Providers :
+- Activer Email pour la création de compte et la connexion par e-mail/mot de passe.
+- Activer Anonymous Sign-Ins pour le mode invité.
+- Activer le *manual identity linking* pour permettre l'association d'une identité à un compte invité.
 
-## 4. Brancher le projet au jeu
-Modifier `cloud-config.js` une seule fois :
-```js
-window.NEXUS_SUPABASE_CONFIG = {
-  url: "https://VOTRE-PROJET.supabase.co",
-  anonKey: "VOTRE-CLE-PUBLIQUE"
-};
-```
-Publier le changement sur GitHub. Tous les joueurs utiliseront alors automatiquement le même backend ; ils n'auront pas à saisir ces informations.
+### Google (facultatif)
+Pour Google, il faut aussi créer/configurer les identifiants OAuth dans le compte Google Cloud du propriétaire du projet :
+1. Activer le fournisseur Google dans Supabase et renseigner les identifiants OAuth.
+2. Copier l'URL de callback OAuth affichée par Supabase et la déclarer comme URI de redirection autorisée dans le client OAuth Google.
+3. Dans Supabase > Authentication > URL Configuration, définir la Site URL sur :
+   `https://noonoo-hash.github.io/nexus-game-the-real/`
+4. Ajouter cette même URL complète à la liste des Redirect URLs autorisées. Le jeu renvoie vers l'URL courante de la page ; elle doit donc être autorisée.
 
-Les champs de configuration visibles dans Options sont un mécanisme de test/local de secours. La configuration partagée du fichier `cloud-config.js` est prioritaire.
+Ne pas confondre l'URI de callback Google (qui pointe vers Supabase) avec l'URL de retour du joueur après connexion (qui pointe vers le jeu).
+
+## 4. Configuration du jeu
+La configuration publique du projet est déjà intégrée dans `cloud-config.js`. Aucune modification supplémentaire n'est nécessaire tant que l'URL du projet et sa clé publique restent valides.
+
+Le fichier est public par conception : la sécurité repose sur les règles RLS et les droits SQL, pas sur le secret de la clé publishable.
 
 ## Fonctionnement
-- Sauvegarde locale conservée.
-- Synchronisation cloud après les sauvegardes automatiques locales.
-- Connexion par e-mail/mot de passe, Google ou compte invité anonyme.
-- Les comptes invités doivent être associés à une identité récupérable avant de changer/perdre leur navigateur.
-- Lors d'une première connexion sur un nouvel appareil, la sauvegarde cloud est restaurée si aucune sauvegarde locale n'existe.
-- Les sauvegardes cloud sont protégées par RLS.
+- La sauvegarde locale reste active.
+- Une sauvegarde cloud est envoyée après les sauvegardes automatiques locales.
+- Connexion prévue par e-mail/mot de passe, Google ou compte invité anonyme.
+- Un compte invité doit être associé à une identité récupérable avant de changer/perdre son navigateur.
+- Sur un nouvel appareil sans sauvegarde locale, le jeu restaure la sauvegarde cloud du compte connecté.
+- Si une sauvegarde locale existe, le jeu conserve la plus récente selon son horodatage.
+
+## 5. Test de validation
+Après les réglages ci-dessus :
+1. Ouvrir https://noonoo-hash.github.io/nexus-game-the-real/
+2. Dans le panneau « Sauvegarde cloud & comptes », lancer « Jouer en invité » ou créer un compte e-mail.
+3. Faire progresser la partie et attendre le message « Sauvegarde cloud synchronisée ».
+4. Dans Supabase > Table Editor > `player_saves`, vérifier qu'une ligne est créée.
+5. Tester la connexion au même compte dans un autre navigateur/appareil pour vérifier la restauration.
+
+Ne pas utiliser un compte invité comme unique moyen de récupération : sa session peut être perdue si les données du navigateur sont effacées ou si l'utilisateur change d'appareil.
 
 ## Limites et précautions
-- Le cloud n'est pas opérationnel tant que le projet Supabase n'est pas créé, configuré et renseigné dans `cloud-config.js`.
-- Les comptes invités anonymes ne sont pas récupérables après perte de leur session, sauf association préalable à un e-mail ou à Google.
+- Le cloud n'est réellement opérationnel qu'après exécution du SQL et activation des fournisseurs nécessaires dans le tableau de bord.
+- Les comptes invités anonymes ne sont pas récupérables après perte de leur session, sauf association préalable à une identité.
 - Le jeu reste jouable localement sans connexion ; la synchronisation nécessite Internet.
-- Pour un jeu public, prévoir des limites de débit, une politique de confidentialité et un mécanisme de résolution de conflits si un même compte joue simultanément sur plusieurs appareils.
+- Pour un lancement public, prévoir aussi des limites de débit / CAPTCHA et une politique de confidentialité.
+- Si le même compte est utilisé simultanément sur plusieurs appareils, la dernière sauvegarde envoyée peut remplacer l'autre : il faudra alors ajouter une vraie stratégie de résolution de conflits.
