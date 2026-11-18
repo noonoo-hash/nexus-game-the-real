@@ -1,7 +1,6 @@
 // NEXUS cloud configuration.
-// Configure once with your Supabase Project URL and publishable/anon key.
-// The publishable/anon key is intended for browser use. NEVER put service_role here.
+// Publishable keys are designed for browser use. Never put a Supabase secret/service_role key here.
 window.NEXUS_SUPABASE_CONFIG = {
-  url: "",
-  anonKey: ""
+  url: "https://yzmgbltymdyubxnbkcse.supabase.co",
+  anonKey: "sb_publishable_SRPJRJWBrwSgnK5HX9vp0Q_UoM4bL0P"
 };
