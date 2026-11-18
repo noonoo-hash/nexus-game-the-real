@@ -1,5 +1,5 @@
 -- NEXUS: table de sauvegardes joueur pour Supabase
--- A executer une seule fois dans Supabase > SQL Editor.
+-- A executer dans Supabase > SQL Editor. Le script est re-executable.
 
 create table if not exists public.player_saves (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -8,6 +8,11 @@ create table if not exists public.player_saves (
 );
 
 alter table public.player_saves enable row level security;
+
+-- Defense en profondeur : aucune lecture/ecriture publique ou via le role anon.
+revoke all on table public.player_saves from public;
+revoke all on table public.player_saves from anon;
+grant select, insert, update on table public.player_saves to authenticated;
 
 drop policy if exists "Players can read their own save" on public.player_saves;
 create policy "Players can read their own save"
@@ -28,5 +33,5 @@ to authenticated
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
--- Ne jamais activer de policy publique (anon) donnant acces aux sauvegardes.
--- Les utilisateurs anonymes Supabase sont authentifies et passent par ces policies.
+-- Les comptes invités Supabase sont des utilisateurs authentifies :
+-- ils utilisent donc ces policies, avec auth.uid() limite a leur propre ligne.
