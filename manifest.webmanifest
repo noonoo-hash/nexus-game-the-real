@@ -1,0 +1,19 @@
+{
+  "name": "NEXUS — Infinite Multiverse",
+  "short_name": "NEXUS",
+  "description": "Incremental Idle Empire",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#080d18",
+  "theme_color": "#090f1d",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
